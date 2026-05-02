@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "ingest": "npx tsx src/core/ingest.ts",
-    "start": "npx tsx src/index.ts",
-    "dev": "npx tsx watch src/index.ts"
+    "ingest": "tsx src/core/ingest.ts",
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts"
   },
   "keywords": [],
   "author": "",
