@@ -126,28 +126,22 @@ function startPolling() {
     if (pollInterval) return;
     pollInterval = setInterval(async () => {
         try {
-            const res = await fetch(`/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: '__POLL__', sessionId: sessionId })
-            });
-            // Also check for new admin messages by fetching the last messages
-        } catch (e) {}
-
-        // Simple polling: re-fetch recent messages
-        try {
             const res = await fetch(`/api/chats-public/${sessionId}/poll?after=${lastMessageId}`);
             if (res.ok) {
                 const messages = await res.json();
                 messages.forEach(msg => {
-                    if (msg.role === 'admin' && msg.id > lastMessageId) {
-                        appendMessage('bot', '👤 **Agente K-Mart:** ' + msg.content);
+                    if (msg.id > lastMessageId) {
                         lastMessageId = msg.id;
-                    }
-                    if (msg.role === 'admin' && msg.content.includes('salido del chat')) {
-                        adminTakeover = false;
-                        clearInterval(pollInterval);
-                        pollInterval = null;
+                        if (msg.content.includes('salido del chat')) {
+                            adminTakeover = false;
+                            clearInterval(pollInterval);
+                            pollInterval = null;
+                            appendMessage('bot', msg.content);
+                        } else if (msg.content.includes('se ha unido')) {
+                            appendMessage('bot', msg.content);
+                        } else {
+                            appendMessage('bot', '👤 ' + msg.content);
+                        }
                     }
                 });
             }
