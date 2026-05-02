@@ -12,6 +12,14 @@ document.getElementById('btn-telegram').addEventListener('click', () => {
     window.open(telegramUrl, '_blank');
 });
 
+// WhatsApp Deep Link Setup
+const WHATSAPP_PHONE = '50373494883';
+document.getElementById('btn-whatsapp').addEventListener('click', () => {
+    const prefilledMsg = encodeURIComponent('¡Hola! Quiero información sobre productos de K-Mart 🛒');
+    const waUrl = `https://wa.me/${WHATSAPP_PHONE}?text=${prefilledMsg}`;
+    window.open(waUrl, '_blank');
+});
+
 // UI Elements
 const chatWidget = document.getElementById('chat-widget');
 const chatToggle = document.getElementById('chat-toggle');

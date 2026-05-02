@@ -275,6 +275,8 @@ body {
 .chat-controls button:hover {
   background: rgba(255, 255, 255, 0.35);
 }
+#btn-whatsapp:hover { background: #25D366; }
+#btn-telegram:hover { background: #0088cc; }
 
 .chat-body {
   flex: 1;

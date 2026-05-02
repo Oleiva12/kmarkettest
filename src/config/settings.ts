@@ -13,6 +13,13 @@ export const config = {
   telegram: {
     token: process.env.TELEGRAM_BOT_TOKEN || '',
   },
+  whatsapp: {
+    accessToken: process.env.WHATSAPP_ACCESS_TOKEN || '',
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || '',
+    verifyToken: process.env.WHATSAPP_VERIFY_TOKEN || 'kmart-verify-token',
+    apiVersion: process.env.WHATSAPP_API_VERSION || 'v25.0',
+    businessPhone: process.env.WHATSAPP_BUSINESS_PHONE || '50373494883',
+  },
   port: parseInt(process.env.PORT || '3000', 10),
   cache: {
     ttlHours: parseInt(process.env.CACHE_TTL_HOURS || '24', 10),

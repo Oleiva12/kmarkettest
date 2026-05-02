@@ -170,10 +170,16 @@ app.post('/api/chats/:id/send', authMiddleware, (req, res) => {
 
   addMessage(sessionId, 'admin', message);
 
-  // If it's a Telegram session, send via bot
+  // Send admin message to the correct channel
   try {
+    // Try Telegram
     import('../channels/telegram.js').then(({ sendTelegramMessage }) => {
       sendTelegramMessage(sessionId, message);
+    }).catch(() => {});
+    // Try WhatsApp
+    import('../channels/whatsapp.js').then(({ sendWhatsAppAdminMessage }) => {
+      // sessionId for WhatsApp is the phone number
+      sendWhatsAppAdminMessage(sessionId, message);
     }).catch(() => {});
   } catch (e) {}
 
