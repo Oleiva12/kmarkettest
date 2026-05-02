@@ -355,21 +355,33 @@ export async function askBrain(
         console.log(`📁 Categorías trackeadas: ${[...trackedCategories].join(', ')}`);
       }
 
-      // 7. Generar respuesta con Gemini Flash
-      console.log('🤖 Generando respuesta con Gemini Flash...');
+      // 7. Generar respuesta con DeepSeek
+      console.log(`🤖 Generando respuesta con DeepSeek (${config.deepseek.model})...`);
       
-      const client = getNextClient();
-      const response = await client.models.generateContent({
-        model: config.gemini.model,
-        contents: `CONTEXTO:\n${context}\n\nPREGUNTA: ${userMessage}`,
-        config: {
-          systemInstruction: config.systemPrompt,
-          temperature: 0.3,
-          maxOutputTokens: 800,
+      const deepseekResponse = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${config.deepseek.apiKey}`
         },
+        body: JSON.stringify({
+          model: config.deepseek.model,
+          messages: [
+            { role: 'system', content: config.systemPrompt },
+            { role: 'user', content: `CONTEXTO:\n${context}\n\nPREGUNTA: ${userMessage}` }
+          ],
+          temperature: 0.3,
+          max_tokens: 800,
+        })
       });
 
-      let responseText = response.text || 'No se pudo generar una respuesta.';
+      if (!deepseekResponse.ok) {
+        const errText = await deepseekResponse.text();
+        throw new Error(`DeepSeek API Error: ${deepseekResponse.status} ${errText}`);
+      }
+
+      const deepseekData = await deepseekResponse.json();
+      let responseText = deepseekData.choices?.[0]?.message?.content || 'No se pudo generar una respuesta.';
 
       console.log(`✅ Respuesta generada (${responseText.length} caracteres)`);
 

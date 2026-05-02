@@ -10,6 +10,10 @@ export const config = {
     model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
     embedModel: process.env.GEMINI_EMBED_MODEL || 'gemini-embedding-2',
   },
+  deepseek: {
+    apiKey: process.env.DEEPSEEK_API_KEY || 'sk-17344870ba9b48ab928d5198bc7f35c5',
+    model: process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash',
+  },
   telegram: {
     token: process.env.TELEGRAM_BOT_TOKEN || '',
   },
