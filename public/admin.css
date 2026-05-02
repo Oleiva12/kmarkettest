@@ -1,12 +1,12 @@
 /* ─── K-Mart CRM Dashboard — Orange & Blue ─── */
 :root {
-  --primary: #F57C00;
-  --primary-light: #FF9800;
-  --primary-dark: #E65100;
+  --primary: #FF9800;
+  --primary-light: #FFB300;
+  --primary-dark: #F57C00;
   --secondary: #1565C0;
   --secondary-light: #1E88E5;
   --secondary-dark: #0D47A1;
-  --accent: #FFB74D;
+  --accent: #FFCA28;
   --bg-body: #070E1B;
   --bg-sidebar: #0B1526;
   --bg-card: rgba(15, 28, 52, 0.85);

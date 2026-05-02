@@ -1,12 +1,12 @@
 /* ─── K-Mart El Salvador — Orange & Blue Design System ─── */
 :root {
-  --primary: #F57C00;
-  --primary-light: #FF9800;
-  --primary-dark: #E65100;
+  --primary: #FF9800;
+  --primary-light: #FFB300;
+  --primary-dark: #F57C00;
   --secondary: #1565C0;
   --secondary-light: #1E88E5;
   --secondary-dark: #0D47A1;
-  --accent: #FFB74D;
+  --accent: #FFCA28;
   --bg-dark: #0A1628;
   --bg-card: rgba(15, 30, 55, 0.75);
   --bg-glass: rgba(255, 255, 255, 0.06);
@@ -94,7 +94,25 @@ body {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
-
+.admin-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.85rem;
+  padding: 8px 18px;
+  border: 1px solid var(--border);
+  border-radius: 30px;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  backdrop-filter: blur(10px);
+  background: var(--bg-glass);
+}
+.admin-link:hover {
+  border-color: var(--primary);
+  color: var(--primary-light);
+  background: rgba(255, 152, 0, 0.08);
+}
 /* ─── Hero ─── */
 .hero {
   display: grid;
