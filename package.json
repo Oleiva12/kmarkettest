@@ -21,14 +21,14 @@
     "express": "^5.2.1",
     "llamaindex": "^0.12.1",
     "node-telegram-bot-api": "^0.67.0",
-    "ollama": "^0.6.3"
+    "ollama": "^0.6.3",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/express": "^5.0.6",
     "@types/node": "^25.6.0",
-    "@types/node-telegram-bot-api": "^0.64.14",
-    "tsx": "^4.21.0",
-    "typescript": "^6.0.3"
+    "@types/node-telegram-bot-api": "^0.64.14"
   }
 }
