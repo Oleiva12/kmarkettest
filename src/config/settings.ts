@@ -19,7 +19,7 @@ export const config = {
   },
   paths: {
     vectorStore: path.join(PROJECT_ROOT, 'storage', 'vector-store'),
-    sqliteDb: path.join(PROJECT_ROOT, 'storage', 'kmart.db'),
+    sqliteDb: path.join(process.env.DATA_DIR || path.join(PROJECT_ROOT, 'data'), 'kmart.db'),
     dataFile: path.join(PROJECT_ROOT, '..', 'final_dataset.jsonl'),
   },
   systemPrompt: `Eres el asistente virtual de K-Mart El Salvador, una distribuidora comercial salvadoreña con más de 35 años de experiencia. Tu nombre es "Kmart Asistente".
