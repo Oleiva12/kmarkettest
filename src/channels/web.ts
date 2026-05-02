@@ -5,7 +5,8 @@ import {
   getAllLeads, createLead, updateLead, getLeadById,
   getTopProducts, getTopCategories, getDashboardSummary, getActivityTimeline,
   getAllChatSessions, getChatMessages, getNewMessages,
-  takeOverSession, releaseSession, addMessage, isSessionTakenOver
+  takeOverSession, releaseSession, addMessage, isSessionTakenOver,
+  getPendingAlerts, dismissAlert, dismissAlertsBySession, getPendingAlertCount
 } from '../core/cache.js';
 import * as crypto from 'crypto';
 
@@ -149,7 +150,8 @@ app.get('/api/chats/:id/poll', authMiddleware, (req, res) => {
 app.post('/api/chats/:id/takeover', authMiddleware, (req, res) => {
   const ok = takeOverSession(req.params.id);
   if (!ok) return res.status(404).json({ error: 'Sesión no encontrada' });
-  // Notify web client via the pending response mechanism
+  // Auto-dismiss alerts for this session
+  dismissAlertsBySession(req.params.id);
   res.json({ ok: true, message: 'Sesión tomada' });
 });
 
@@ -183,6 +185,20 @@ app.post('/api/chats/:id/send', authMiddleware, (req, res) => {
     }).catch(() => {});
   } catch (e) {}
 
+  res.json({ ok: true });
+});
+
+// ─── Agent Alerts ───
+app.get('/api/alerts', authMiddleware, (_req, res) => {
+  res.json(getPendingAlerts());
+});
+
+app.get('/api/alerts/count', authMiddleware, (_req, res) => {
+  res.json({ count: getPendingAlertCount() });
+});
+
+app.post('/api/alerts/:id/dismiss', authMiddleware, (req, res) => {
+  dismissAlert(parseInt(req.params.id));
   res.json({ ok: true });
 });
 

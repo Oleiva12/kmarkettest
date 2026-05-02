@@ -5,7 +5,7 @@ import {
   getCachedResponse, setCachedResponse, getOrCreateSession, addMessage,
   logProductQuery, logCategoryQuery,
   getOnboardingState, setOnboardingState, createLead, getLeadBySessionId,
-  isSessionTakenOver
+  isSessionTakenOver, createAgentAlert
 } from './cache.js';
 import { config } from '../config/settings.js';
 
@@ -383,7 +383,24 @@ export async function askBrain(
         responseText += startOnboarding(userId);
       }
 
-      // 10. Guardar mensaje del asistente en historial
+      // 10. Detectar si el usuario pide hablar con un agente humano
+      const agentKeywords = [
+        'hablar con un agente', 'hablar con una persona', 'persona real',
+        'agente real', 'agente humano', 'humano', 'asesor', 'representante',
+        'quiero hablar con alguien', 'comunicarme con', 'necesito ayuda de una persona',
+        'contactar a alguien', 'llamar', 'operador', 'soporte humano',
+        'no me sirve el bot', 'no entiendes', 'pasame con alguien',
+        'quiero un agente', 'atención personalizada', 'vendedor',
+      ];
+      const msgLower = userMessage.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const wantsAgent = agentKeywords.some(kw => msgLower.includes(kw));
+      if (wantsAgent) {
+        createAgentAlert(sessionId, userId, channel, userMessage);
+        console.log(`🚨 ALERTA: ${userId} quiere hablar con un agente`);
+        responseText += '\n\n---\n🔔 He notificado a un agente de K-Mart. Un representante se comunicará contigo pronto.';
+      }
+
+      // 11. Guardar mensaje del asistente en historial
       addMessage(sessionId, 'assistant', responseText);
 
       return { response: responseText };

@@ -241,6 +241,22 @@ body {
   border: 1px solid rgba(245,124,0,0.2);
 }
 .nav-item i { width: 20px; text-align: center; }
+.nav-alert-badge {
+  background: #E53935;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: auto;
+  box-shadow: 0 0 8px rgba(229,57,53,0.5);
+  animation: pulse 2s infinite;
+}
+.session-badge.alert {
+  background: rgba(229,57,53,0.2);
+  color: #EF5350;
+  border: 1px solid rgba(229,57,53,0.3);
+}
 .sidebar-footer {
   padding: 16px 12px;
   border-top: 1px solid var(--border);

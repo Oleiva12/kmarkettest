@@ -131,9 +131,33 @@ async function loadDashboard() {
 
         // Activity Timeline
         renderActivityChart('activity-chart', timeline);
+        
+        // Start alert polling
+        startAlertPolling();
     } catch (err) {
         console.error('Error loading dashboard:', err);
     }
+}
+
+// ─── Alerts Polling ───
+let alertPollInterval = null;
+function startAlertPolling() {
+    if (alertPollInterval) return;
+    checkAlerts();
+    alertPollInterval = setInterval(checkAlerts, 5000);
+}
+
+async function checkAlerts() {
+    try {
+        const { count } = await api('/api/alerts/count');
+        const badge = document.getElementById('nav-alert-badge');
+        if (count > 0) {
+            badge.textContent = count;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    } catch (e) {}
 }
 
 function animateValue(elementId, endVal) {
@@ -382,7 +406,8 @@ function renderSessionList(sessions) {
                 </div>
                 <div class="session-meta">
                     <span class="session-time">${time}</span>
-                    ${s.is_taken_over ? '<span class="session-badge live">EN VIVO</span>' : `<span class="session-badge msg-count">${s.message_count} msgs</span>`}
+                    ${s.alert_count > 0 ? '<span class="session-badge alert">¡AGENTE REQUERIDO!</span>' : 
+                      (s.is_taken_over ? '<span class="session-badge live">EN VIVO</span>' : `<span class="session-badge msg-count">${s.message_count} msgs</span>`)}
                 </div>
             </div>
         `;
@@ -405,6 +430,15 @@ async function openChatSession(sessionId, name, channel, takenOver) {
     // Mark active in list
     document.querySelectorAll('.session-item').forEach(el => el.classList.remove('active'));
     event?.target?.closest?.('.session-item')?.classList.add('active');
+
+    // Dismiss alerts for this session (optimistic UI update)
+    const sessionBadge = event?.target?.closest?.('.session-item')?.querySelector('.session-badge.alert');
+    if (sessionBadge) {
+        sessionBadge.outerHTML = '<span class="session-badge msg-count">...</span>';
+        api(`/api/chats/${sessionId}/takeover`, { method: 'POST' }).then(() => checkAlerts()).catch(()=>{});
+        isTakenOver = true;
+        updateTakeoverUI();
+    }
 
     // Load messages
     try {

@@ -88,6 +88,16 @@ db.exec(`
     taken_at TEXT DEFAULT (datetime('now')),
     admin_user TEXT DEFAULT 'admin'
   );
+
+  CREATE TABLE IF NOT EXISTS agent_alerts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    channel TEXT DEFAULT 'web',
+    message TEXT NOT NULL,
+    dismissed INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 // ─── Funciones de Caché ───
@@ -421,6 +431,7 @@ export function getAllChatSessions(): any[] {
       (SELECT role FROM chat_messages WHERE session_id = cs.id ORDER BY created_at DESC LIMIT 1) as last_role,
       (SELECT created_at FROM chat_messages WHERE session_id = cs.id ORDER BY created_at DESC LIMIT 1) as last_message_at,
       CASE WHEN at2.session_id IS NOT NULL THEN 1 ELSE 0 END as is_taken_over,
+      (SELECT COUNT(*) FROM agent_alerts WHERE session_id = cs.id AND dismissed = 0) as alert_count,
       l.first_name as lead_name,
       l.email as lead_email
     FROM chat_sessions cs
@@ -440,6 +451,35 @@ export function getNewMessages(sessionId: string, afterId: number): Array<{ id: 
   return db.prepare(
     'SELECT id, role, content, created_at FROM chat_messages WHERE session_id = ? AND id > ? ORDER BY created_at ASC'
   ).all(sessionId, afterId) as any[];
+}
+
+// ─── Agent Alerts ───
+
+export function createAgentAlert(sessionId: string, userId: string, channel: string, message: string): void {
+  db.prepare('INSERT INTO agent_alerts (session_id, user_id, channel, message) VALUES (?, ?, ?, ?)').run(sessionId, userId, channel, message);
+}
+
+export function getPendingAlerts(): any[] {
+  return db.prepare(`
+    SELECT a.*, l.first_name as lead_name, l.email as lead_email
+    FROM agent_alerts a
+    LEFT JOIN leads l ON a.session_id = l.session_id
+    WHERE a.dismissed = 0
+    ORDER BY a.created_at DESC
+  `).all();
+}
+
+export function dismissAlert(alertId: number): void {
+  db.prepare('UPDATE agent_alerts SET dismissed = 1 WHERE id = ?').run(alertId);
+}
+
+export function dismissAlertsBySession(sessionId: string): void {
+  db.prepare('UPDATE agent_alerts SET dismissed = 1 WHERE session_id = ?').run(sessionId);
+}
+
+export function getPendingAlertCount(): number {
+  const row = db.prepare('SELECT COUNT(*) as count FROM agent_alerts WHERE dismissed = 0').get() as any;
+  return row?.count || 0;
 }
 
 // ─── Cleanup ───
