@@ -3,7 +3,9 @@ import { askBrain } from '../core/brain.js';
 import { config } from '../config/settings.js';
 import {
   getAllLeads, createLead, updateLead, getLeadById,
-  getTopProducts, getTopCategories, getDashboardSummary, getActivityTimeline
+  getTopProducts, getTopCategories, getDashboardSummary, getActivityTimeline,
+  getAllChatSessions, getChatMessages, getNewMessages,
+  takeOverSession, releaseSession, addMessage, isSessionTakenOver
 } from '../core/cache.js';
 import * as crypto from 'crypto';
 
@@ -119,7 +121,66 @@ app.get('/api/analytics/timeline', authMiddleware, (req, res) => {
   res.json(getActivityTimeline(days));
 });
 
-// ─── Chat Endpoint ───
+// ─── Public endpoint for web clients to poll admin messages ───
+app.get('/api/chats-public/:id/poll', (req, res) => {
+  const afterId = parseInt(req.query.after as string) || 0;
+  const messages = getNewMessages(req.params.id, afterId);
+  // Only return admin messages for security
+  const adminMsgs = messages.filter(m => m.role === 'admin');
+  res.json(adminMsgs);
+});
+
+// ─── Chat Sessions (Admin Live Chat) ───
+app.get('/api/chats', authMiddleware, (_req, res) => {
+  res.json(getAllChatSessions());
+});
+
+app.get('/api/chats/:id/messages', authMiddleware, (req, res) => {
+  const messages = getChatMessages(req.params.id);
+  res.json(messages);
+});
+
+app.get('/api/chats/:id/poll', authMiddleware, (req, res) => {
+  const afterId = parseInt(req.query.after as string) || 0;
+  const messages = getNewMessages(req.params.id, afterId);
+  res.json(messages);
+});
+
+app.post('/api/chats/:id/takeover', authMiddleware, (req, res) => {
+  const ok = takeOverSession(req.params.id);
+  if (!ok) return res.status(404).json({ error: 'Sesión no encontrada' });
+  // Notify web client via the pending response mechanism
+  res.json({ ok: true, message: 'Sesión tomada' });
+});
+
+app.post('/api/chats/:id/release', authMiddleware, (req, res) => {
+  const ok = releaseSession(req.params.id);
+  if (!ok) return res.status(404).json({ error: 'Sesión no encontrada o no tomada' });
+  res.json({ ok: true, message: 'Sesión liberada' });
+});
+
+app.post('/api/chats/:id/send', authMiddleware, (req, res) => {
+  const { message } = req.body;
+  if (!message) return res.status(400).json({ error: 'message es requerido' });
+  
+  const sessionId = req.params.id;
+  if (!isSessionTakenOver(sessionId)) {
+    return res.status(400).json({ error: 'Debes tomar control del chat primero' });
+  }
+
+  addMessage(sessionId, 'admin', message);
+
+  // If it's a Telegram session, send via bot
+  try {
+    import('../channels/telegram.js').then(({ sendTelegramMessage }) => {
+      sendTelegramMessage(sessionId, message);
+    }).catch(() => {});
+  } catch (e) {}
+
+  res.json({ ok: true });
+});
+
+// ─── Chat Endpoint (User) ───
 app.post('/chat', async (req, res) => {
   const { message, sessionId } = req.body;
 
@@ -130,6 +191,16 @@ app.post('/chat', async (req, res) => {
   try {
     const userId = sessionId || `web-${Date.now()}`;
     const result = await askBrain(message, userId, 'web');
+
+    // If admin took over, don't send AI response — admin responds via dashboard
+    if (result.response === '__ADMIN_TAKEOVER__') {
+      return res.json({
+        response: null,
+        sessionId: userId,
+        timestamp: new Date().toISOString(),
+        adminTakeover: true,
+      });
+    }
 
     res.json({
       response: result.response,

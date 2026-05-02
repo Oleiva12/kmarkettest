@@ -82,6 +82,12 @@ db.exec(`
     completed INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS admin_takeover (
+    session_id TEXT PRIMARY KEY,
+    taken_at TEXT DEFAULT (datetime('now')),
+    admin_user TEXT DEFAULT 'admin'
+  );
 `);
 
 // ─── Funciones de Caché ───
@@ -170,7 +176,7 @@ export function linkWebSessionToTelegram(telegramUserId: string, webSessionId: s
   return true;
 }
 
-export function addMessage(sessionId: string, role: 'user' | 'assistant', content: string): void {
+export function addMessage(sessionId: string, role: 'user' | 'assistant' | 'admin', content: string): void {
   db.prepare('INSERT INTO chat_messages (session_id, role, content) VALUES (?, ?, ?)').run(sessionId, role, content);
 }
 
@@ -376,6 +382,64 @@ export function setOnboardingState(sessionId: string, data: Partial<OnboardingDa
       db.prepare(`UPDATE onboarding_state SET ${fields.join(', ')} WHERE session_id = ?`).run(...values);
     }
   }
+}
+
+// ─── Admin Takeover ───
+
+export function isSessionTakenOver(sessionId: string): boolean {
+  const row = db.prepare('SELECT session_id FROM admin_takeover WHERE session_id = ?').get(sessionId);
+  return !!row;
+}
+
+export function takeOverSession(sessionId: string, adminUser: string = 'admin'): boolean {
+  const session = db.prepare('SELECT id FROM chat_sessions WHERE id = ?').get(sessionId);
+  if (!session) return false;
+  db.prepare('INSERT OR REPLACE INTO admin_takeover (session_id, admin_user) VALUES (?, ?)').run(sessionId, adminUser);
+  addMessage(sessionId, 'admin', '🔔 Un agente de K-Mart se ha unido al chat. Ahora te atiende una persona real.');
+  return true;
+}
+
+export function releaseSession(sessionId: string): boolean {
+  const result = db.prepare('DELETE FROM admin_takeover WHERE session_id = ?').run(sessionId);
+  if (result.changes > 0) {
+    addMessage(sessionId, 'admin', '🤖 El agente ha salido del chat. Vuelves a hablar con el asistente de IA.');
+    return true;
+  }
+  return false;
+}
+
+export function getAllChatSessions(): any[] {
+  return db.prepare(`
+    SELECT 
+      cs.id,
+      cs.channel,
+      cs.user_id,
+      cs.created_at,
+      cs.updated_at,
+      (SELECT COUNT(*) FROM chat_messages WHERE session_id = cs.id) as message_count,
+      (SELECT content FROM chat_messages WHERE session_id = cs.id ORDER BY created_at DESC LIMIT 1) as last_message,
+      (SELECT role FROM chat_messages WHERE session_id = cs.id ORDER BY created_at DESC LIMIT 1) as last_role,
+      (SELECT created_at FROM chat_messages WHERE session_id = cs.id ORDER BY created_at DESC LIMIT 1) as last_message_at,
+      CASE WHEN at2.session_id IS NOT NULL THEN 1 ELSE 0 END as is_taken_over,
+      l.first_name as lead_name,
+      l.email as lead_email
+    FROM chat_sessions cs
+    LEFT JOIN admin_takeover at2 ON cs.id = at2.session_id
+    LEFT JOIN leads l ON cs.id = l.session_id
+    ORDER BY cs.updated_at DESC
+  `).all();
+}
+
+export function getChatMessages(sessionId: string): Array<{ id: number; role: string; content: string; created_at: string }> {
+  return db.prepare(
+    'SELECT id, role, content, created_at FROM chat_messages WHERE session_id = ? ORDER BY created_at ASC'
+  ).all(sessionId) as any[];
+}
+
+export function getNewMessages(sessionId: string, afterId: number): Array<{ id: number; role: string; content: string; created_at: string }> {
+  return db.prepare(
+    'SELECT id, role, content, created_at FROM chat_messages WHERE session_id = ? AND id > ? ORDER BY created_at ASC'
+  ).all(sessionId, afterId) as any[];
 }
 
 // ─── Cleanup ───

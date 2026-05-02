@@ -91,6 +91,7 @@ function showSection(sectionId, navEl) {
 
     // Load section data
     if (sectionId === 'overview') loadDashboard();
+    else if (sectionId === 'chats') loadChats();
     else if (sectionId === 'leads') loadLeads();
     else if (sectionId === 'analytics') loadAnalytics();
 
@@ -338,4 +339,203 @@ function renderRankingList(containerId, data, nameKey, valueKey) {
             </div>
         `;
     }).join('');
+}
+
+// ─── Live Chat Module ───
+let currentChatSession = null;
+let chatPollInterval = null;
+let lastKnownMsgId = 0;
+let isTakenOver = false;
+
+async function loadChats() {
+    try {
+        const sessions = await api('/api/chats');
+        renderSessionList(sessions);
+    } catch (err) {
+        console.error('Error loading chats:', err);
+    }
+}
+
+function renderSessionList(sessions) {
+    const container = document.getElementById('chat-sessions-list');
+    if (!sessions.length) {
+        container.innerHTML = '<div class="empty-state" style="padding:40px;text-align:center;color:var(--text-muted)"><i class="fa-solid fa-inbox"></i><br>No hay sesiones de chat</div>';
+        return;
+    }
+
+    container.innerHTML = sessions.map(s => {
+        const channelIcons = { web: 'fa-globe', telegram: 'fa-telegram', whatsapp: 'fa-whatsapp' };
+        const icon = channelIcons[s.channel] || 'fa-comment';
+        const iconPrefix = s.channel === 'telegram' || s.channel === 'whatsapp' ? 'fa-brands' : 'fa-solid';
+        const name = s.lead_name || s.user_id.substring(0, 16);
+        const preview = s.last_message ? s.last_message.substring(0, 40) + (s.last_message.length > 40 ? '...' : '') : 'Sin mensajes';
+        const time = s.last_message_at ? new Date(s.last_message_at).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) : '';
+        const activeClass = currentChatSession === s.id ? 'active' : '';
+        const takenClass = s.is_taken_over ? 'taken-over' : '';
+
+        return `
+            <div class="session-item ${activeClass} ${takenClass}" onclick="openChatSession('${s.id}', '${name}', '${s.channel}', ${s.is_taken_over})">
+                <div class="session-avatar ${s.channel}"><i class="${iconPrefix} ${icon}"></i></div>
+                <div class="session-info">
+                    <div class="session-name">${name}</div>
+                    <div class="session-preview">${preview}</div>
+                </div>
+                <div class="session-meta">
+                    <span class="session-time">${time}</span>
+                    ${s.is_taken_over ? '<span class="session-badge live">EN VIVO</span>' : `<span class="session-badge msg-count">${s.message_count} msgs</span>`}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function openChatSession(sessionId, name, channel, takenOver) {
+    currentChatSession = sessionId;
+    isTakenOver = !!takenOver;
+
+    // Show header
+    document.querySelector('.admin-chat-empty').style.display = 'none';
+    document.getElementById('admin-chat-header').classList.remove('hidden');
+    document.getElementById('admin-chat-messages').classList.remove('hidden');
+    document.getElementById('admin-chat-name').textContent = name;
+    document.getElementById('admin-chat-channel').textContent = channel;
+
+    updateTakeoverUI();
+
+    // Mark active in list
+    document.querySelectorAll('.session-item').forEach(el => el.classList.remove('active'));
+    event?.target?.closest?.('.session-item')?.classList.add('active');
+
+    // Load messages
+    try {
+        const messages = await api(`/api/chats/${sessionId}/messages`);
+        renderChatMessages(messages);
+        if (messages.length > 0) {
+            lastKnownMsgId = messages[messages.length - 1].id;
+        }
+    } catch (err) {
+        console.error('Error loading messages:', err);
+    }
+
+    // Start polling
+    startChatPolling();
+}
+
+function updateTakeoverUI() {
+    const btnTakeover = document.getElementById('btn-takeover');
+    const btnRelease = document.getElementById('btn-release');
+    const chatInput = document.getElementById('admin-chat-input');
+
+    if (isTakenOver) {
+        btnTakeover.classList.add('hidden');
+        btnRelease.classList.remove('hidden');
+        chatInput.classList.remove('hidden');
+    } else {
+        btnTakeover.classList.remove('hidden');
+        btnRelease.classList.add('hidden');
+        chatInput.classList.add('hidden');
+    }
+}
+
+function renderChatMessages(messages) {
+    const container = document.getElementById('admin-chat-messages');
+    const roleLabels = { user: '👤 Usuario', assistant: '🤖 IA', admin: '🧑‍💼 Agente' };
+
+    container.innerHTML = messages.map(msg => {
+        const time = new Date(msg.created_at).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+        const content = msg.content.length > 500 ? msg.content.substring(0, 500) + '...' : msg.content;
+        return `
+            <div class="admin-msg ${msg.role}">
+                <div class="msg-role">${roleLabels[msg.role] || msg.role}</div>
+                <div>${content}</div>
+                <div class="msg-time">${time}</div>
+            </div>
+        `;
+    }).join('');
+
+    container.scrollTop = container.scrollHeight;
+}
+
+function appendNewMessages(messages) {
+    const container = document.getElementById('admin-chat-messages');
+    const roleLabels = { user: '👤 Usuario', assistant: '🤖 IA', admin: '🧑‍💼 Agente' };
+
+    messages.forEach(msg => {
+        const time = new Date(msg.created_at).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+        const div = document.createElement('div');
+        div.className = `admin-msg ${msg.role}`;
+        div.innerHTML = `
+            <div class="msg-role">${roleLabels[msg.role] || msg.role}</div>
+            <div>${msg.content}</div>
+            <div class="msg-time">${time}</div>
+        `;
+        container.appendChild(div);
+        lastKnownMsgId = msg.id;
+    });
+
+    container.scrollTop = container.scrollHeight;
+}
+
+function startChatPolling() {
+    if (chatPollInterval) clearInterval(chatPollInterval);
+    chatPollInterval = setInterval(async () => {
+        if (!currentChatSession) return;
+        try {
+            const newMsgs = await api(`/api/chats/${currentChatSession}/poll?after=${lastKnownMsgId}`);
+            if (newMsgs.length > 0) {
+                appendNewMessages(newMsgs);
+            }
+        } catch (e) {}
+    }, 2000);
+}
+
+async function handleTakeover() {
+    if (!currentChatSession) return;
+    try {
+        await api(`/api/chats/${currentChatSession}/takeover`, { method: 'POST' });
+        isTakenOver = true;
+        updateTakeoverUI();
+        // Reload messages to show takeover notification
+        const messages = await api(`/api/chats/${currentChatSession}/messages`);
+        renderChatMessages(messages);
+        if (messages.length > 0) lastKnownMsgId = messages[messages.length - 1].id;
+        // Reload session list
+        loadChats();
+    } catch (err) {
+        console.error('Error taking over:', err);
+    }
+}
+
+async function handleRelease() {
+    if (!currentChatSession) return;
+    try {
+        await api(`/api/chats/${currentChatSession}/release`, { method: 'POST' });
+        isTakenOver = false;
+        updateTakeoverUI();
+        const messages = await api(`/api/chats/${currentChatSession}/messages`);
+        renderChatMessages(messages);
+        if (messages.length > 0) lastKnownMsgId = messages[messages.length - 1].id;
+        loadChats();
+    } catch (err) {
+        console.error('Error releasing:', err);
+    }
+}
+
+async function sendAdminMessage() {
+    const input = document.getElementById('admin-msg-input');
+    const message = input.value.trim();
+    if (!message || !currentChatSession) return;
+
+    input.value = '';
+
+    try {
+        await api(`/api/chats/${currentChatSession}/send`, {
+            method: 'POST',
+            body: JSON.stringify({ message }),
+        });
+        // Message will appear via polling
+    } catch (err) {
+        console.error('Error sending admin message:', err);
+        input.value = message;
+    }
 }

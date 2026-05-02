@@ -1,9 +1,12 @@
 import TelegramBot from 'node-telegram-bot-api';
 import { askBrain, processOnboarding, startOnboarding } from '../core/brain.js';
 import { config } from '../config/settings.js';
-import { getOnboardingState, getLeadBySessionId } from '../core/cache.js';
+import { getOnboardingState, getLeadBySessionId, db } from '../core/cache.js';
 
 let bot: TelegramBot | null = null;
+
+// Map to track userId -> chatId for Telegram
+const chatIdMap = new Map<string, number>();
 
 function formatForTelegram(text: string): string {
   let formatted = text;
@@ -51,6 +54,9 @@ export function startTelegramBot() {
     const userId = msg.from?.id?.toString() || chatId.toString();
     const userName = msg.from?.first_name || 'amigo';
     const webSessionId = match ? match[1] : null;
+
+    // Track chatId for admin messaging
+    chatIdMap.set(userId, chatId);
 
     let welcomeExtra = '';
 
@@ -185,6 +191,9 @@ export function startTelegramBot() {
     const chatId = msg.chat.id;
     const userId = msg.from?.id?.toString() || chatId.toString();
 
+    // Track chatId for admin messaging
+    chatIdMap.set(userId, chatId);
+
     // Check if in onboarding first
     const obState = getOnboardingState(userId);
     if (obState && obState.completed === 0 && obState.step !== 'none') {
@@ -219,6 +228,11 @@ export function startTelegramBot() {
 
       clearInterval(typingInterval);
 
+      // If admin took over, don't send AI response
+      if (result.response === '__ADMIN_TAKEOVER__') {
+        return;
+      }
+
       // Convertir Markdown estándar de Gemini a HTML seguro de Telegram
       const htmlResponse = formatForTelegram(result.response);
 
@@ -245,4 +259,33 @@ export function startTelegramBot() {
   bot.on('polling_error', (error) => {
     console.error('Error de polling Telegram:', error.message);
   });
+}
+
+// ─── Send message from admin to Telegram user ───
+export function sendTelegramMessage(sessionId: string, message: string): void {
+  if (!bot) return;
+
+  // Try chatIdMap first
+  const chatId = chatIdMap.get(sessionId);
+  if (chatId) {
+    bot.sendMessage(chatId, `👤 *Agente K-Mart:*\n${message}`, { parse_mode: 'Markdown' }).catch(e => {
+      console.error('Error enviando mensaje admin a Telegram:', e.message);
+    });
+    return;
+  }
+
+  // Try to find the user_id from the session (it's a Telegram numeric ID for telegram sessions)
+  try {
+    const session = (db as any).prepare('SELECT user_id, channel FROM chat_sessions WHERE id = ? OR user_id = ?').get(sessionId, sessionId) as any;
+    if (session && session.channel === 'telegram') {
+      const tgChatId = parseInt(session.user_id);
+      if (!isNaN(tgChatId)) {
+        bot.sendMessage(tgChatId, `👤 *Agente K-Mart:*\n${message}`, { parse_mode: 'Markdown' }).catch(e => {
+          console.error('Error enviando mensaje admin a Telegram:', e.message);
+        });
+      }
+    }
+  } catch (e: any) {
+    console.error('Error buscando sesión Telegram:', e.message);
+  }
 }

@@ -4,7 +4,8 @@ import { GoogleGenAI } from '@google/genai';
 import {
   getCachedResponse, setCachedResponse, getOrCreateSession, addMessage,
   logProductQuery, logCategoryQuery,
-  getOnboardingState, setOnboardingState, createLead, getLeadBySessionId
+  getOnboardingState, setOnboardingState, createLead, getLeadBySessionId,
+  isSessionTakenOver
 } from './cache.js';
 import { config } from '../config/settings.js';
 
@@ -290,6 +291,15 @@ export async function askBrain(
 ): Promise<{ response: string; onboarding?: OnboardingResult }> {
   return enqueue(async () => {
     console.log(`\n💬 [${channel}] Pregunta de ${userId}: "${userMessage}"`);
+
+    // 0. Verificar si un admin tomó control del chat
+    if (isSessionTakenOver(userId)) {
+      // Solo guardar el mensaje del usuario, NO generar respuesta IA
+      const sessionId = getOrCreateSession(userId, channel);
+      addMessage(sessionId, 'user', userMessage);
+      console.log(`🛑 Sesión ${userId} bajo control de admin — IA desactivada`);
+      return { response: '__ADMIN_TAKEOVER__' }; // Signal to skip AI response
+    }
 
     // 1. Verificar si estamos en onboarding
     const onboardingResult = processOnboarding(userId, userMessage, channel);

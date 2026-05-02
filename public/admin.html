@@ -51,6 +51,10 @@
                 <i class="fa-solid fa-chart-pie"></i>
                 <span>Overview</span>
             </a>
+            <a href="#" class="nav-item" data-section="chats" onclick="showSection('chats', this)">
+                <i class="fa-solid fa-comments"></i>
+                <span>Chats</span>
+            </a>
             <a href="#" class="nav-item" data-section="leads" onclick="showSection('leads', this)">
                 <i class="fa-solid fa-users"></i>
                 <span>Leads</span>
@@ -197,6 +201,44 @@
             <div class="chart-card full-width">
                 <h3><i class="fa-solid fa-calendar-days"></i> Actividad (Últimos 30 días)</h3>
                 <div id="analytics-timeline" class="activity-chart"></div>
+            </div>
+        </section>
+
+        <!-- CHATS Section -->
+        <section id="section-chats" class="section hidden">
+            <div class="section-header">
+                <h2><i class="fa-solid fa-comments"></i> Chats en Vivo</h2>
+                <button class="refresh-btn" onclick="loadChats()"><i class="fa-solid fa-refresh"></i> Actualizar</button>
+            </div>
+
+            <div class="chats-layout">
+                <!-- Session List -->
+                <div class="chat-sessions-list" id="chat-sessions-list">
+                    <div class="empty-state" style="padding:30px;text-align:center;color:var(--text-muted)">Cargando sesiones...</div>
+                </div>
+
+                <!-- Active Chat Panel -->
+                <div class="admin-chat-panel" id="admin-chat-panel">
+                    <div class="admin-chat-empty">
+                        <i class="fa-solid fa-comment-dots"></i>
+                        <p>Selecciona una sesión para ver el chat</p>
+                    </div>
+                    <div class="admin-chat-header hidden" id="admin-chat-header">
+                        <div class="admin-chat-info">
+                            <strong id="admin-chat-name">Usuario</strong>
+                            <span id="admin-chat-channel" class="channel-badge">web</span>
+                        </div>
+                        <div class="admin-chat-actions">
+                            <button id="btn-takeover" class="btn-takeover" onclick="handleTakeover()"><i class="fa-solid fa-headset"></i> Tomar Control</button>
+                            <button id="btn-release" class="btn-release hidden" onclick="handleRelease()"><i class="fa-solid fa-robot"></i> Devolver a IA</button>
+                        </div>
+                    </div>
+                    <div class="admin-chat-messages hidden" id="admin-chat-messages"></div>
+                    <div class="admin-chat-input hidden" id="admin-chat-input">
+                        <input type="text" id="admin-msg-input" placeholder="Escribe un mensaje..." onkeypress="if(event.key==='Enter')sendAdminMessage()">
+                        <button onclick="sendAdminMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
             </div>
         </section>
     </main>

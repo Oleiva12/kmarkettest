@@ -73,6 +73,10 @@ function hideTyping() {
     if (typingDiv) typingDiv.remove();
 }
 
+let adminTakeover = false;
+let lastMessageId = 0;
+let pollInterval = null;
+
 async function sendMessage() {
     const text = chatInput.value.trim();
     if (!text || isProcessing) return;
@@ -81,7 +85,7 @@ async function sendMessage() {
     appendMessage('user', text);
     
     isProcessing = true;
-    showTyping();
+    if (!adminTakeover) showTyping();
 
     try {
         const response = await fetch('/chat', {
@@ -95,9 +99,13 @@ async function sendMessage() {
         const data = await response.json();
         hideTyping();
         
-        if (data.error) {
+        if (data.adminTakeover) {
+            adminTakeover = true;
+            startPolling();
+            // Don't show anything - admin will respond
+        } else if (data.error) {
             appendMessage('bot', '⚠️ Ocurrió un error. Intenta de nuevo.');
-        } else {
+        } else if (data.response) {
             const options = {};
             if (data.onboarding && data.onboarding.skipPhoneButton) {
                 options.skipPhoneButton = true;
@@ -111,6 +119,40 @@ async function sendMessage() {
         isProcessing = false;
         chatInput.focus();
     }
+}
+
+// Poll for admin messages when session is taken over
+function startPolling() {
+    if (pollInterval) return;
+    pollInterval = setInterval(async () => {
+        try {
+            const res = await fetch(`/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: '__POLL__', sessionId: sessionId })
+            });
+            // Also check for new admin messages by fetching the last messages
+        } catch (e) {}
+
+        // Simple polling: re-fetch recent messages
+        try {
+            const res = await fetch(`/api/chats-public/${sessionId}/poll?after=${lastMessageId}`);
+            if (res.ok) {
+                const messages = await res.json();
+                messages.forEach(msg => {
+                    if (msg.role === 'admin' && msg.id > lastMessageId) {
+                        appendMessage('bot', '👤 **Agente K-Mart:** ' + msg.content);
+                        lastMessageId = msg.id;
+                    }
+                    if (msg.role === 'admin' && msg.content.includes('salido del chat')) {
+                        adminTakeover = false;
+                        clearInterval(pollInterval);
+                        pollInterval = null;
+                    }
+                });
+            }
+        } catch (e) {}
+    }, 2000);
 }
 
 function handleKeyPress(event) {
