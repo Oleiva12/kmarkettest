@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "ingest": "tsx src/core/ingest.ts",
-    "start": "tsx src/index.ts",
-    "dev": "tsx watch src/index.ts"
+    "ingest": "node --import tsx src/core/ingest.ts",
+    "start": "node --import tsx src/index.ts",
+    "dev": "node --import tsx --watch src/index.ts"
   },
   "keywords": [],
   "author": "",
