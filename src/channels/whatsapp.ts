@@ -94,10 +94,10 @@ export function mountWhatsAppRoutes(app: express.Express) {
       console.log(`📱 [WhatsApp] Mensaje de ${phoneNumber}: "${userMessage}"`);
 
       // Procesar con el cerebro RAG
-      const response = await askBrain(userMessage, phoneNumber, 'whatsapp');
+      const result = await askBrain(userMessage, phoneNumber, 'whatsapp');
 
       // Formatear respuesta para WhatsApp
-      const waResponse = formatForWhatsApp(response, phoneNumber);
+      const waResponse = formatForWhatsApp(result.response, phoneNumber);
 
       // TODO: Enviar respuesta via WhatsApp Cloud API
       // await sendWhatsAppMessage(waResponse);

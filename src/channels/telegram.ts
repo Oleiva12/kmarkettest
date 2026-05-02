@@ -1,6 +1,7 @@
 import TelegramBot from 'node-telegram-bot-api';
-import { askBrain } from '../core/brain.js';
+import { askBrain, processOnboarding, startOnboarding } from '../core/brain.js';
 import { config } from '../config/settings.js';
+import { getOnboardingState, getLeadBySessionId } from '../core/cache.js';
 
 let bot: TelegramBot | null = null;
 
@@ -19,6 +20,9 @@ function formatForTelegram(text: string): string {
   
   // 4. Links: [text](url) -> <a href="url">text</a>
   formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+  
+  // Remove --- separators
+  formatted = formatted.replace(/\n---\n/g, '\n');
   
   return formatted;
 }
@@ -57,11 +61,23 @@ export function startTelegramBot() {
       }
     }
 
+    // Check if user already has a lead
+    const existingLead = getLeadBySessionId(userId);
+    const obState = getOnboardingState(userId);
+    let onboardingPrompt = '';
+
+    if (!existingLead && !obState) {
+      onboardingPrompt = `\n\n📋 Para darte una mejor atención, ¿me compartes tu nombre?`;
+      // Start onboarding
+      startOnboarding(userId);
+    }
+
     await bot!.sendMessage(chatId,
       `¡Hola ${userName}! 👋\n\n` +
       `Soy el asistente virtual de <b>K-Mart El Salvador</b> 🇸🇻\n\n` +
       `Puedo ayudarte con información sobre productos, categorías, y asesoramiento de compras.` +
-      welcomeExtra,
+      welcomeExtra +
+      onboardingPrompt,
       { 
         parse_mode: 'HTML',
         reply_markup: mainKeyboard
@@ -140,6 +156,12 @@ export function startTelegramBot() {
       await sendCategorias(chatId);
     } else if (data === 'cmd_contacto') {
       await sendContacto(chatId);
+    } else if (data === 'skip_phone') {
+      // Handle skip phone during onboarding
+      const onboardingResult = processOnboarding(userId, 'saltar', 'telegram');
+      if (onboardingResult.onboardingMessage) {
+        await bot!.sendMessage(chatId, onboardingResult.onboardingMessage, { parse_mode: 'HTML' });
+      }
     } else if (data?.startsWith('cat_')) {
       const catMap: Record<string, string> = {
         'cat_belleza': 'Belleza', 'cat_bolsas': 'Bolsa Plástica', 'cat_desechables': 'Desechables',
@@ -163,6 +185,23 @@ export function startTelegramBot() {
     const chatId = msg.chat.id;
     const userId = msg.from?.id?.toString() || chatId.toString();
 
+    // Check if in onboarding first
+    const obState = getOnboardingState(userId);
+    if (obState && obState.completed === 0 && obState.step !== 'none') {
+      const onboardingResult = processOnboarding(userId, msg.text, 'telegram');
+      if (onboardingResult.onboardingMessage && !onboardingResult.shouldContinue) {
+        const replyMarkup = onboardingResult.skipPhoneButton
+          ? { inline_keyboard: [[{ text: 'Saltar ⏭️', callback_data: 'skip_phone' }]] }
+          : undefined;
+
+        await bot!.sendMessage(chatId, onboardingResult.onboardingMessage, {
+          parse_mode: 'HTML',
+          reply_markup: replyMarkup,
+        });
+        return;
+      }
+    }
+
     await handleRagMessage(chatId, userId, msg.text);
   });
 
@@ -176,12 +215,12 @@ export function startTelegramBot() {
     }, 4000);
 
     try {
-      const response = await askBrain(text, userId, 'telegram');
+      const result = await askBrain(text, userId, 'telegram');
 
       clearInterval(typingInterval);
 
       // Convertir Markdown estándar de Gemini a HTML seguro de Telegram
-      const htmlResponse = formatForTelegram(response);
+      const htmlResponse = formatForTelegram(result.response);
 
       // Enviar respuesta con formato HTML
       await bot!.sendMessage(chatId, htmlResponse, {
@@ -190,7 +229,7 @@ export function startTelegramBot() {
       }).catch(async (e) => {
         console.warn('⚠️ Error enviando HTML, enviando sin formato fallback:', e.message);
         // Si falla el HTML (caracteres inválidos), enviar sin formato
-        await bot!.sendMessage(chatId, response);
+        await bot!.sendMessage(chatId, result.response);
       });
 
     } catch (error: any) {

@@ -30,7 +30,7 @@ function closeChat() {
     chatToggle.style.display = 'flex';
 }
 
-function appendMessage(sender, text) {
+function appendMessage(sender, text, options = {}) {
     const msgDiv = document.createElement('div');
     msgDiv.classList.add('message', sender);
     
@@ -42,6 +42,20 @@ function appendMessage(sender, text) {
     }
     
     chatMessages.appendChild(msgDiv);
+
+    // Add skip button if needed (onboarding phone step)
+    if (options.skipPhoneButton) {
+        const skipBtn = document.createElement('button');
+        skipBtn.classList.add('skip-btn');
+        skipBtn.textContent = 'Saltar ⏭️';
+        skipBtn.onclick = () => {
+            skipBtn.remove();
+            chatInput.value = 'saltar';
+            sendMessage();
+        };
+        chatMessages.appendChild(skipBtn);
+    }
+
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
@@ -84,7 +98,11 @@ async function sendMessage() {
         if (data.error) {
             appendMessage('bot', '⚠️ Ocurrió un error. Intenta de nuevo.');
         } else {
-            appendMessage('bot', data.response);
+            const options = {};
+            if (data.onboarding && data.onboarding.skipPhoneButton) {
+                options.skipPhoneButton = true;
+            }
+            appendMessage('bot', data.response, options);
         }
     } catch (error) {
         hideTyping();

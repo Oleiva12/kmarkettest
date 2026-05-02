@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K-Mart CRM | Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<!-- ─── Login Screen ─── -->
+<div id="login-screen" class="login-screen">
+    <div class="login-card">
+        <div class="login-logo">
+            <i class="fa-solid fa-store"></i>
+            <h1>K-Mart <span>CRM</span></h1>
+        </div>
+        <p class="login-subtitle">Panel de Administración</p>
+        <form id="login-form" onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label for="login-user"><i class="fa-solid fa-user"></i> Usuario</label>
+                <input type="text" id="login-user" placeholder="admin" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label for="login-pass"><i class="fa-solid fa-lock"></i> Contraseña</label>
+                <input type="password" id="login-pass" placeholder="••••••••" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="login-btn" id="login-btn">
+                <span>Iniciar Sesión</span>
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+            <p id="login-error" class="login-error"></p>
+        </form>
+    </div>
+</div>
+
+<!-- ─── Dashboard ─── -->
+<div id="dashboard" class="dashboard hidden">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <i class="fa-solid fa-store"></i>
+            <h2>K-Mart <span>CRM</span></h2>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" data-section="overview" onclick="showSection('overview', this)">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Overview</span>
+            </a>
+            <a href="#" class="nav-item" data-section="leads" onclick="showSection('leads', this)">
+                <i class="fa-solid fa-users"></i>
+                <span>Leads</span>
+            </a>
+            <a href="#" class="nav-item" data-section="analytics" onclick="showSection('analytics', this)">
+                <i class="fa-solid fa-chart-bar"></i>
+                <span>Analytics</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <button onclick="handleLogout()" class="logout-btn">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Cerrar Sesión</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Mobile Header -->
+    <header class="mobile-header">
+        <button class="hamburger" onclick="toggleSidebar()">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+        <h2>K-Mart CRM</h2>
+        <button onclick="handleLogout()" class="mobile-logout">
+            <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+        <!-- OVERVIEW Section -->
+        <section id="section-overview" class="section">
+            <div class="section-header">
+                <h2><i class="fa-solid fa-chart-pie"></i> Overview</h2>
+                <button class="refresh-btn" onclick="loadDashboard()"><i class="fa-solid fa-refresh"></i> Actualizar</button>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card orange">
+                    <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-total-leads">—</span>
+                        <span class="stat-label">Total Leads</span>
+                    </div>
+                </div>
+                <div class="stat-card blue">
+                    <div class="stat-icon"><i class="fa-solid fa-user-plus"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-leads-today">—</span>
+                        <span class="stat-label">Leads Hoy</span>
+                    </div>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-icon"><i class="fa-solid fa-comments"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-total-chats">—</span>
+                        <span class="stat-label">Total Chats</span>
+                    </div>
+                </div>
+                <div class="stat-card purple">
+                    <div class="stat-icon"><i class="fa-solid fa-box-open"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-product-queries">—</span>
+                        <span class="stat-label">Consultas Producto</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="charts-row">
+                <div class="chart-card">
+                    <h3><i class="fa-solid fa-fire"></i> Top Productos Consultados</h3>
+                    <div id="top-products-chart" class="bar-chart"></div>
+                </div>
+                <div class="chart-card">
+                    <h3><i class="fa-solid fa-tags"></i> Top Categorías</h3>
+                    <div id="top-categories-chart" class="bar-chart"></div>
+                </div>
+            </div>
+
+            <!-- Activity Timeline -->
+            <div class="chart-card full-width">
+                <h3><i class="fa-solid fa-chart-line"></i> Actividad (Últimos 7 días)</h3>
+                <div id="activity-chart" class="activity-chart"></div>
+            </div>
+        </section>
+
+        <!-- LEADS Section -->
+        <section id="section-leads" class="section hidden">
+            <div class="section-header">
+                <h2><i class="fa-solid fa-users"></i> Leads</h2>
+                <div class="section-actions">
+                    <select id="lead-filter-status" onchange="loadLeads()">
+                        <option value="">Todos los estados</option>
+                        <option value="nuevo">🟢 Nuevo</option>
+                        <option value="contactado">🔵 Contactado</option>
+                        <option value="convertido">🟣 Convertido</option>
+                        <option value="descartado">⚫ Descartado</option>
+                    </select>
+                    <button class="btn-add" onclick="showLeadModal()"><i class="fa-solid fa-plus"></i> Nuevo Lead</button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table id="leads-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Teléfono</th>
+                            <th>Canal</th>
+                            <th>Estado</th>
+                            <th>Fecha</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leads-tbody">
+                        <tr><td colspan="7" class="empty-state">Cargando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ANALYTICS Section -->
+        <section id="section-analytics" class="section hidden">
+            <div class="section-header">
+                <h2><i class="fa-solid fa-chart-bar"></i> Analytics</h2>
+                <button class="refresh-btn" onclick="loadAnalytics()"><i class="fa-solid fa-refresh"></i> Actualizar</button>
+            </div>
+
+            <div class="analytics-grid">
+                <div class="chart-card">
+                    <h3><i class="fa-solid fa-ranking-star"></i> Ranking de Productos</h3>
+                    <div id="analytics-products" class="ranking-list"></div>
+                </div>
+                <div class="chart-card">
+                    <h3><i class="fa-solid fa-layer-group"></i> Ranking de Categorías</h3>
+                    <div id="analytics-categories" class="ranking-list"></div>
+                </div>
+            </div>
+
+            <div class="chart-card full-width">
+                <h3><i class="fa-solid fa-calendar-days"></i> Actividad (Últimos 30 días)</h3>
+                <div id="analytics-timeline" class="activity-chart"></div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- ─── Lead Modal ─── -->
+<div id="lead-modal" class="modal hidden" onclick="if(event.target===this)closeLeadModal()">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modal-title"><i class="fa-solid fa-user-plus"></i> Nuevo Lead</h3>
+            <button onclick="closeLeadModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="lead-form" onsubmit="handleLeadSubmit(event)">
+            <input type="hidden" id="lead-edit-id">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nombre *</label>
+                    <input type="text" id="lead-firstname" required>
+                </div>
+                <div class="form-group">
+                    <label>Apellido</label>
+                    <input type="text" id="lead-lastname">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="lead-email">
+                </div>
+                <div class="form-group">
+                    <label>Teléfono</label>
+                    <input type="text" id="lead-phone">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Canal</label>
+                    <select id="lead-channel">
+                        <option value="web">Web</option>
+                        <option value="telegram">Telegram</option>
+                        <option value="whatsapp">WhatsApp</option>
+                        <option value="manual">Manual</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Estado</label>
+                    <select id="lead-status">
+                        <option value="nuevo">🟢 Nuevo</option>
+                        <option value="contactado">🔵 Contactado</option>
+                        <option value="convertido">🟣 Convertido</option>
+                        <option value="descartado">⚫ Descartado</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Notas</label>
+                <textarea id="lead-notes" rows="3" placeholder="Notas adicionales..."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" onclick="closeLeadModal()">Cancelar</button>
+                <button type="submit" class="btn-save"><i class="fa-solid fa-check"></i> Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Overlay for mobile sidebar -->
+<div id="sidebar-overlay" class="sidebar-overlay hidden" onclick="toggleSidebar()"></div>
+
+<script src="admin.js"></script>
+</body>
+</html>
