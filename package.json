@@ -1,0 +1,34 @@
+{
+  "name": "rag-system",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "ingest": "npx tsx src/core/ingest.ts",
+    "start": "npx tsx src/index.ts",
+    "dev": "npx tsx watch src/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@google/genai": "^1.51.0",
+    "@llamaindex/ollama": "^0.1.23",
+    "@llamaindex/readers": "^3.1.21",
+    "better-sqlite3": "^12.9.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "llamaindex": "^0.12.1",
+    "node-telegram-bot-api": "^0.67.0",
+    "ollama": "^0.6.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.6.0",
+    "@types/node-telegram-bot-api": "^0.64.14",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  }
+}

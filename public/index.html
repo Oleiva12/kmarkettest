@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K-Mart El Salvador | Catálogo y Asistencia Inteligente</title>
+    <!-- Google Fonts: Outfit & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Background Animations -->
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+
+    <main class="landing-content">
+        <header class="navbar">
+            <div class="logo">
+                <h1>K-Mart <span>El Salvador</span></h1>
+            </div>
+        </header>
+
+        <section class="hero">
+            <div class="hero-text">
+                <h2>Tu aliado en empaques y desechables</h2>
+                <p>Descubre nuestro catálogo completo de forma rápida y sencilla. Nuestro asistente inteligente con IA te ayudará a encontrar exactamente lo que buscas.</p>
+                <div class="cta-buttons">
+                    <button class="btn-primary" onclick="openChat()">Hablar con K-Mart AI</button>
+                    <a href="https://kmart-elsalvador.com" target="_blank" class="btn-secondary">Visitar Tienda Oficial</a>
+                </div>
+            </div>
+            <div class="hero-image-placeholder">
+                <div class="glass-card mockup-card">
+                    <i class="fa-solid fa-box-open fa-4x text-accent"></i>
+                    <h3>Catálogo Inteligente</h3>
+                    <p>Más de 80 productos de alta calidad al mejor precio por volumen.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Chat Widget (Floating) -->
+    <div id="chat-widget" class="chat-widget glass-panel hidden">
+        <div class="chat-header">
+            <div class="chat-title">
+                <i class="fa-solid fa-robot"></i> K-Mart AI
+            </div>
+            <div class="chat-controls">
+                <button id="btn-telegram" title="Continuar en Telegram">
+                    <i class="fa-brands fa-telegram"></i>
+                </button>
+                <button id="btn-close-chat" onclick="closeChat()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+        <div class="chat-body" id="chat-messages">
+            <!-- Messages will be injected here -->
+            <div class="message bot">
+                ¡Hola! 👋 Soy el asistente de K-Mart. ¿En qué te puedo ayudar hoy?
+            </div>
+        </div>
+        <div class="chat-footer">
+            <input type="text" id="chat-input" placeholder="Pregunta sobre vasos, bolsas..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()" id="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <!-- Toggle Button -->
+    <button id="chat-toggle" class="chat-toggle-btn" onclick="openChat()">
+        <i class="fa-solid fa-comment-dots"></i>
+    </button>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

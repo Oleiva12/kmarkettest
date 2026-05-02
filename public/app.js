@@ -1,0 +1,102 @@
+// Session Management
+let sessionId = localStorage.getItem('kmart_session_id');
+if (!sessionId) {
+    sessionId = 'web-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('kmart_session_id', sessionId);
+}
+
+// Telegram Deep Link Setup
+const TELEGRAM_BOT_USERNAME = 'KmarttestBot';
+document.getElementById('btn-telegram').addEventListener('click', () => {
+    const telegramUrl = `https://t.me/${TELEGRAM_BOT_USERNAME}?start=${sessionId}`;
+    window.open(telegramUrl, '_blank');
+});
+
+// UI Elements
+const chatWidget = document.getElementById('chat-widget');
+const chatToggle = document.getElementById('chat-toggle');
+const chatMessages = document.getElementById('chat-messages');
+const chatInput = document.getElementById('chat-input');
+let isProcessing = false;
+
+function openChat() {
+    chatWidget.classList.remove('hidden');
+    chatToggle.style.display = 'none';
+    chatInput.focus();
+}
+
+function closeChat() {
+    chatWidget.classList.add('hidden');
+    chatToggle.style.display = 'flex';
+}
+
+function appendMessage(sender, text) {
+    const msgDiv = document.createElement('div');
+    msgDiv.classList.add('message', sender);
+    
+    if (sender === 'bot') {
+        // Usa marked.js para convertir Markdown a HTML
+        msgDiv.innerHTML = marked.parse(text);
+    } else {
+        msgDiv.textContent = text;
+    }
+    
+    chatMessages.appendChild(msgDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function showTyping() {
+    const typingDiv = document.createElement('div');
+    typingDiv.classList.add('typing-indicator');
+    typingDiv.id = 'typing-indicator';
+    typingDiv.innerHTML = '<span></span><span></span><span></span>';
+    chatMessages.appendChild(typingDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function hideTyping() {
+    const typingDiv = document.getElementById('typing-indicator');
+    if (typingDiv) typingDiv.remove();
+}
+
+async function sendMessage() {
+    const text = chatInput.value.trim();
+    if (!text || isProcessing) return;
+
+    chatInput.value = '';
+    appendMessage('user', text);
+    
+    isProcessing = true;
+    showTyping();
+
+    try {
+        const response = await fetch('/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ message: text, sessionId: sessionId })
+        });
+
+        const data = await response.json();
+        hideTyping();
+        
+        if (data.error) {
+            appendMessage('bot', '⚠️ Ocurrió un error. Intenta de nuevo.');
+        } else {
+            appendMessage('bot', data.response);
+        }
+    } catch (error) {
+        hideTyping();
+        appendMessage('bot', '🔌 Error de conexión con el servidor.');
+    } finally {
+        isProcessing = false;
+        chatInput.focus();
+    }
+}
+
+function handleKeyPress(event) {
+    if (event.key === 'Enter') {
+        sendMessage();
+    }
+}
