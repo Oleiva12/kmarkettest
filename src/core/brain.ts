@@ -4,13 +4,24 @@ import { GoogleGenAI } from '@google/genai';
 import { getCachedResponse, setCachedResponse, getOrCreateSession, addMessage } from './cache.js';
 import { config } from '../config/settings.js';
 
-// ─── Configurar Gemini ───
-const genai = new GoogleGenAI({ apiKey: config.gemini.apiKey });
+// ─── Pool de API Keys con rotación ───
+const apiKeys = config.gemini.apiKey.split(',').map(k => k.trim()).filter(Boolean);
+const genaiPool = apiKeys.map(key => new GoogleGenAI({ apiKey: key }));
+let currentKeyIndex = 0;
+
+function getNextClient(): GoogleGenAI {
+  const client = genaiPool[currentKeyIndex];
+  currentKeyIndex = (currentKeyIndex + 1) % genaiPool.length;
+  return client;
+}
+
+console.log(`🔑 ${apiKeys.length} API key(s) configuradas — límite efectivo: ~${apiKeys.length * 15} RPM`);
 
 // ─── Cola de concurrencia y Rate Limiting ───
 let processingQueue: Promise<void> = Promise.resolve();
 let lastApiCallTime = 0;
-const rateLimitMs = 4000; // 4 segundos entre peticiones para no saturar 15 RPM
+// Con N keys, podemos reducir el delay proporcionalmente
+const rateLimitMs = Math.max(1000, Math.floor(4000 / apiKeys.length));
 
 async function rateLimitDelay() {
   const now = Date.now();
@@ -109,7 +120,8 @@ async function loadDocuments(): Promise<void> {
 
 // ─── Generar embedding con Gemini ───
 async function getEmbedding(text: string): Promise<number[]> {
-  const response = await genai.models.embedContent({
+  const client = getNextClient();
+  const response = await client.models.embedContent({
     model: config.gemini.embedModel,
     contents: text,
   });
@@ -184,7 +196,8 @@ export async function askBrain(
       // 4. Generar respuesta con Gemini Flash
       console.log('🤖 Generando respuesta con Gemini Flash...');
       
-      const response = await genai.models.generateContent({
+      const client = getNextClient();
+      const response = await client.models.generateContent({
         model: config.gemini.model,
         contents: `CONTEXTO:\n${context}\n\nPREGUNTA: ${userMessage}`,
         config: {
